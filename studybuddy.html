@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>StudyBuddy — AI Learning Assistant</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F7F5F0;
+  --bg2:#FFFFFF;
+  --sidebar:#1A2535;
+  --sidebar2:#243040;
+  --teal:#1BB89A;
+  --teal-light:#E6F7F4;
+  --navy:#1F3A5F;
+  --text:#1C1E22;
+  --muted:#6B7280;
+  --border:#E5E1D8;
+  --user-bubble:#1F3A5F;
+  --ai-bubble:#FFFFFF;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);
+  font-family:'Segoe UI',system-ui,sans-serif;color:var(--text)}
+
+/* ── LAYOUT ── */
+#app{display:flex;height:100vh}
+
+/* ── SIDEBAR ── */
+#sidebar{
+  width:270px;flex-shrink:0;background:var(--sidebar);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.sb-logo{
+  padding:1.3rem 1.4rem;
+  display:flex;align-items:center;gap:.7rem;
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+.sb-logo-icon{
+  width:32px;height:32px;background:var(--teal);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;font-size:1rem;
+}
+.sb-logo-text{font-size:1rem;font-weight:700;color:#fff;letter-spacing:-.01em}
+.sb-logo-sub{font-size:.65rem;color:rgba(255,255,255,.4);margin-top:1px}
+
+.sb-section{padding:.9rem 1.1rem .4rem;font-size:.65rem;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.3)}
+
+.doc-item{
+  margin:.2rem .7rem;padding:.75rem .9rem;border-radius:6px;
+  background:rgba(255,255,255,.05);cursor:pointer;
+  transition:background .15s;
+}
+.doc-item.active{background:rgba(27,184,154,.15);border:0.5px solid rgba(27,184,154,.3)}
+.doc-name{font-size:.82rem;color:#fff;font-weight:500;margin-bottom:.25rem}
+.doc-meta{font-size:.7rem;color:rgba(255,255,255,.4);display:flex;gap:.8rem}
+.doc-pages{font-family:monospace}
+
+.sb-divider{margin:.6rem 1.1rem;height:0.5px;background:rgba(255,255,255,.07)}
+
+.sb-section-label{padding:.6rem 1.1rem .3rem;font-size:.65rem;
+  font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3)}
+.chunk-list{flex:1;overflow-y:auto;padding:.2rem 0 1rem}
+.chunk-list::-webkit-scrollbar{width:3px}
+.chunk-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+
+.chunk{
+  margin:.15rem .7rem;padding:.6rem .9rem;border-radius:5px;
+  cursor:pointer;transition:background .15s;
+}
+.chunk:hover{background:rgba(255,255,255,.05)}
+.chunk-id{font-family:monospace;font-size:.65rem;color:var(--teal);margin-bottom:.2rem}
+.chunk-preview{font-size:.72rem;color:rgba(255,255,255,.45);line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+.sb-footer{
+  padding:1rem 1.1rem;border-top:1px solid rgba(255,255,255,.07);
+  font-size:.72rem;color:rgba(255,255,255,.3);line-height:1.6;
+}
+.sb-footer strong{color:rgba(255,255,255,.55);font-weight:500}
+
+/* ── MAIN ── */
+#main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+
+/* top bar */
+#topbar{
+  padding:.9rem 1.5rem;background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.tb-doc{display:flex;align-items:center;gap:.75rem}
+.tb-doc-icon{
+  width:32px;height:32px;background:var(--teal-light);border-radius:5px;
+  display:flex;align-items:center;justify-content:center;font-size:.95rem;
+}
+.tb-doc-name{font-size:.9rem;font-weight:600;color:var(--text)}
+.tb-doc-meta{font-size:.72rem;color:var(--muted)}
+.tb-badges{display:flex;gap:.5rem}
+.badge{
+  font-size:.68rem;font-weight:500;letter-spacing:.04em;
+  padding:.28rem .7rem;border-radius:20px;
+}
+.badge-teal{background:var(--teal-light);color:#0d9478}
+.badge-navy{background:#EEF2F7;color:var(--navy)}
+
+/* chat */
+#chat{flex:1;overflow-y:auto;padding:1.5rem;display:flex;flex-direction:column;gap:1.2rem}
+#chat::-webkit-scrollbar{width:4px}
+#chat::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+.msg{display:flex;gap:.85rem;max-width:760px;align-self:flex-start}
+.msg.user{flex-direction:row-reverse;align-self:flex-end}
+.avatar{
+  width:32px;height:32px;border-radius:8px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:.8rem;
+  margin-top:2px;
+}
+.avatar-ai{background:var(--teal);color:#fff}
+.avatar-user{background:var(--user-bubble);color:#fff;font-size:.75rem;font-weight:600}
+.bubble{
+  padding:.85rem 1.1rem;border-radius:12px;font-size:.88rem;
+  line-height:1.75;max-width:580px;
+}
+.bubble-ai{background:var(--ai-bubble);border:1px solid var(--border);
+  border-top-left-radius:3px;color:var(--text)}
+.bubble-user{background:var(--user-bubble);color:#fff;border-top-right-radius:3px}
+.bubble p+p{margin-top:.7rem}
+.bubble strong{font-weight:600}
+.bubble ul{padding-left:1.2rem;margin-top:.5rem}
+.bubble ul li{margin-bottom:.3rem}
+.bubble code{
+  font-family:monospace;font-size:.82em;
+  background:rgba(0,0,0,.06);padding:.1em .4em;border-radius:3px;
+}
+.bubble-user code{background:rgba(255,255,255,.15)}
+
+.citations{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.9rem;padding-top:.7rem;
+  border-top:1px solid var(--border)}
+.cite-chip{
+  font-size:.68rem;font-weight:500;letter-spacing:.03em;
+  padding:.25rem .65rem;border-radius:20px;cursor:pointer;
+  background:var(--teal-light);color:#0d9478;
+  transition:background .15s;border:0.5px solid rgba(27,184,154,.25);
+}
+.cite-chip:hover{background:#c8f0e9}
+
+/* cursor blink */
+.cursor{display:inline-block;width:2px;height:1em;background:var(--teal);
+  margin-left:2px;vertical-align:middle;animation:blink .8s step-start infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* suggestions */
+#suggestions{
+  padding:0 1.5rem .9rem;display:flex;flex-wrap:wrap;gap:.5rem;flex-shrink:0;
+}
+.sug{
+  font-size:.78rem;padding:.4rem .95rem;border-radius:20px;cursor:pointer;
+  border:1px solid var(--border);background:var(--bg2);color:var(--muted);
+  transition:all .18s;white-space:nowrap;
+}
+.sug:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-light)}
+
+/* input area */
+#input-area{
+  padding:.9rem 1.5rem 1.1rem;background:var(--bg2);
+  border-top:1px solid var(--border);flex-shrink:0;
+}
+.input-row{
+  display:flex;gap:.75rem;align-items:flex-end;
+  background:var(--bg);border:1.5px solid var(--border);
+  border-radius:10px;padding:.6rem .6rem .6rem 1rem;
+  transition:border-color .2s;
+}
+.input-row:focus-within{border-color:var(--teal)}
+#msg-input{
+  flex:1;background:none;border:none;outline:none;resize:none;
+  font-size:.9rem;color:var(--text);font-family:inherit;
+  line-height:1.6;min-height:24px;max-height:120px;
+}
+#msg-input::placeholder{color:var(--muted)}
+#send-btn{
+  width:36px;height:36px;border-radius:8px;border:none;cursor:pointer;
+  background:var(--teal);color:#fff;font-size:1rem;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:background .18s,transform .1s;
+}
+#send-btn:hover{background:#16a085}
+#send-btn:active{transform:scale(.95)}
+#send-btn:disabled{background:var(--border);cursor:not-allowed}
+.input-hint{font-size:.7rem;color:var(--muted);margin-top:.5rem;padding-left:.3rem}
+
+/* welcome */
+#welcome{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:2rem;text-align:center;
+}
+#welcome h2{font-size:1.4rem;font-weight:700;color:var(--text);margin-bottom:.6rem}
+#welcome p{font-size:.9rem;color:var(--muted);line-height:1.7;max-width:380px}
+.welcome-icon{font-size:3rem;margin-bottom:1.2rem}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">📚</div>
+    <div>
+      <div class="sb-logo-text">StudyBuddy</div>
+      <div class="sb-logo-sub">AI-powered learning</div>
+    </div>
+  </div>
+
+  <div class="sb-section">Documents</div>
+
+  <div class="doc-item active">
+    <div class="doc-name">ML Fundamentals — Ch.1–8</div>
+    <div class="doc-meta">
+      <span class="doc-pages">312 pages</span>
+      <span>· 148 chunks</span>
+    </div>
+  </div>
+  <div class="doc-item">
+    <div class="doc-name">Deep Learning Lecture Notes</div>
+    <div class="doc-meta">
+      <span class="doc-pages">88 pages</span>
+      <span>· 42 chunks</span>
+    </div>
+  </div>
+
+  <div class="sb-divider"></div>
+  <div class="sb-section-label">Source Chunks</div>
+
+  <div class="chunk-list" id="chunk-list"></div>
+
+  <div class="sb-footer">
+    <strong>Retrieval:</strong> text-embedding-3-small<br/>
+    <strong>Model:</strong> claude-sonnet-4-20250514<br/>
+    <strong>Store:</strong> PostgreSQL + pgvector
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="topbar">
+    <div class="tb-doc">
+      <div class="tb-doc-icon">📄</div>
+      <div>
+        <div class="tb-doc-name">ML Fundamentals — Ch.1–8</div>
+        <div class="tb-doc-meta">312 pages · 148 chunks indexed · recall@5</div>
+      </div>
+    </div>
+    <div class="tb-badges">
+      <span class="badge badge-teal">● Live RAG</span>
+      <span class="badge badge-navy">Claude Sonnet</span>
+    </div>
+  </div>
+
+  <div id="chat">
+    <div id="welcome">
+      <div class="welcome-icon">🤖</div>
+      <h2>Ask anything about your document</h2>
+      <p>I'll retrieve the most relevant passages and answer with citations so you can trace every claim back to the source.</p>
+    </div>
+  </div>
+
+  <div id="suggestions">
+    <button class="sug" onclick="ask('What is gradient descent and how does it work?')">What is gradient descent?</button>
+    <button class="sug" onclick="ask('Explain overfitting and how to prevent it')">Explain overfitting</button>
+    <button class="sug" onclick="ask('How does backpropagation work?')">How does backpropagation work?</button>
+    <button class="sug" onclick="ask('What is the difference between supervised and unsupervised learning?')">Supervised vs unsupervised?</button>
+    <button class="sug" onclick="ask('What are regularization techniques in ML?')">Regularization techniques</button>
+  </div>
+
+  <div id="input-area">
+    <div class="input-row">
+      <textarea id="msg-input" rows="1" placeholder="Ask a question about your document…"></textarea>
+      <button id="send-btn" onclick="sendMsg()" title="Send">↑</button>
+    </div>
+    <div class="input-hint">Retrieves top-5 chunks · Streams response · Shows citations</div>
+  </div>
+</div>
+</div>
+
+<script>
+const CHUNKS = [
+  {id:"ml-ch2-p14",preview:"Gradient descent is an iterative optimization algorithm that minimizes a loss function by moving in the direction of steepest descent..."},
+  {id:"ml-ch2-p16",preview:"The learning rate η controls the step size. Too large causes divergence; too small causes slow convergence or local minima trapping..."},
+  {id:"ml-ch3-p28",preview:"Overfitting occurs when a model learns noise in the training data rather than the underlying distribution, reducing generalization..."},
+  {id:"ml-ch3-p31",preview:"Regularization techniques such as L1 (Lasso) and L2 (Ridge) add penalty terms to the loss function to constrain weight magnitudes..."},
+  {id:"ml-ch4-p42",preview:"Backpropagation applies the chain rule of calculus to compute gradients of the loss with respect to each parameter efficiently..."},
+  {id:"ml-ch1-p05",preview:"Supervised learning maps inputs to outputs using labeled training pairs. The algorithm learns a function f: X→Y to minimize prediction error..."},
+  {id:"ml-ch1-p08",preview:"Unsupervised learning discovers hidden structure in unlabeled data through clustering, dimensionality reduction, or density estimation..."},
+  {id:"ml-ch5-p60",preview:"Dropout randomly zeroes neuron activations during training with probability p, acting as an ensemble method and reducing co-adaptation..."},
+  {id:"ml-ch6-p78",preview:"Batch normalization normalizes layer inputs to zero mean and unit variance, improving gradient flow and reducing internal covariate shift..."},
+  {id:"ml-ch7-p92",preview:"The bias-variance tradeoff describes the tension between a model's ability to fit training data (low bias) and generalize (low variance)..."},
+];
+
+const RESPONSES = {
+  "gradient descent": {
+    text: `**Gradient descent** is an iterative optimization algorithm used to minimize a loss function \`L(θ)\` by updating parameters in the direction of the negative gradient.
+
+The update rule is:
+
+\`θ := θ − η · ∇L(θ)\`
+
+where **η** (eta) is the **learning rate** — a critical hyperparameter controlling step size.
+
+**Three main variants:**
+
+- **Batch gradient descent** — computes gradient over the entire dataset each step. Stable but expensive for large datasets.
+- **Stochastic gradient descent (SGD)** — updates after each single example. Fast and noisy, can escape local minima.
+- **Mini-batch gradient descent** — the practical standard; processes batches of 32–512 samples, balancing stability and speed.
+
+**Key challenges include:**
+- Choosing an appropriate learning rate (too high → divergence; too low → slow convergence)
+- Saddle points and local minima in non-convex loss landscapes
+- Vanishing/exploding gradients in deep networks
+
+Modern optimizers like **Adam**, **RMSprop**, and **AdaGrad** adapt the learning rate per-parameter, largely solving the manual tuning problem.`,
+    chunks: ["ml-ch2-p14", "ml-ch2-p16", "ml-ch7-p92"]
+  },
+  "overfitting": {
+    text: `**Overfitting** happens when a model learns spurious patterns and noise in training data rather than the true underlying distribution — resulting in high training accuracy but poor generalization to unseen data.
+
+**How to detect it:**
+- A growing gap between training loss (falling) and validation loss (rising) during training is the clearest signal.
+- Plot learning curves; they should converge, not diverge.
+
+**Prevention techniques:**
+
+1. **Regularization** — L1 (Lasso) adds \`λ·||w||₁\` to the loss, encouraging sparse weights. L2 (Ridge) adds \`λ·||w||₂²\`, penalizing large weights.
+2. **Dropout** — randomly zeros neuron outputs during training with probability \`p\`, forcing redundant representations.
+3. **Early stopping** — halt training when validation loss stops improving.
+4. **Data augmentation** — artificially expand the training set with label-preserving transforms.
+5. **Cross-validation** — k-fold CV gives a more reliable estimate of generalization error.
+6. **Reducing model capacity** — fewer layers, neurons, or features reduces the space of learnable functions.
+
+The **bias-variance tradeoff** frames overfitting as high variance: the model is too sensitive to the specific training sample.`,
+    chunks: ["ml-ch3-p28", "ml-ch3-p31", "ml-ch5-p60", "ml-ch7-p92"]
+  },
+  "backpropagation": {
+    text: `**Backpropagation** is the algorithm that makes training deep neural networks tractable. It efficiently computes gradients of the loss with respect to every parameter by applying the **chain rule** of calculus in reverse through the network.
+
+**Forward pass:**
+1. Input propagates layer by layer: \`a⁽ˡ⁾ = σ(W⁽ˡ⁾ a⁽ˡ⁻¹⁾ + b⁽ˡ⁾)\`
+2. Final layer output is compared to ground truth to compute loss \`L\`.
+
+**Backward pass:**
+1. Compute \`∂L/∂a⁽ᴸ⁾\` at the output layer.
+2. Propagate deltas backwards: \`δ⁽ˡ⁾ = ((W⁽ˡ⁺¹⁾)ᵀ δ⁽ˡ⁺¹⁾) ⊙ σ'(z⁽ˡ⁾)\`
+3. Gradients for weights: \`∂L/∂W⁽ˡ⁾ = δ⁽ˡ⁾ (a⁽ˡ⁻¹⁾)ᵀ\`
+
+The key insight is **reuse** — intermediate activations cached in the forward pass are reused during backward, reducing compute from O(n²) to O(n).
+
+**Common issues:**
+- **Vanishing gradients** — small gradients in early layers make learning slow. ReLU activations and batch normalization help.
+- **Exploding gradients** — large gradient magnitudes destabilize training. Gradient clipping is the standard fix.
+
+Modern deep learning frameworks (PyTorch, JAX) implement backprop via **automatic differentiation** — you never write it manually.`,
+    chunks: ["ml-ch4-p42", "ml-ch6-p78", "ml-ch2-p16"]
+  },
+  "supervised": {
+    text: `**Supervised learning** and **unsupervised learning** represent the two foundational paradigms in machine learning, differing in what information is available during training.
+
+**Supervised learning:**
+- Requires labeled training pairs \`{(x₁,y₁), (x₂,y₂), ..., (xₙ,yₙ)}\`
+- Goal: learn a function \`f: X → Y\` that maps inputs to outputs
+- Sub-tasks: **classification** (discrete Y) and **regression** (continuous Y)
+- Examples: spam detection, image classification, price prediction
+
+**Unsupervised learning:**
+- Only raw inputs \`{x₁, x₂, ..., xₙ}\` — no labels
+- Goal: discover intrinsic structure or representations in the data
+- Sub-tasks: **clustering** (k-means, DBSCAN), **dimensionality reduction** (PCA, t-SNE, autoencoders), **density estimation**
+- Examples: customer segmentation, anomaly detection, topic modeling
+
+**Semi-supervised learning** sits in between — a small labeled set plus a large unlabeled set. Practically important because labeling is expensive.
+
+**Self-supervised learning** (e.g., masked language modeling in BERT, contrastive learning in CLIP) generates supervision signals from the data itself and has driven much of recent progress in large-scale pretraining.`,
+    chunks: ["ml-ch1-p05", "ml-ch1-p08", "ml-ch3-p28"]
+  },
+  "regularization": {
+    text: `**Regularization** encompasses techniques that constrain model complexity to improve generalization by discouraging overfitting.
+
+**Parameter-space regularization:**
+- **L2 (Ridge/Weight Decay):** adds \`λ · Σwᵢ²\` to the loss. Shrinks all weights toward zero proportionally. Standard in most deep learning via the \`weight_decay\` optimizer parameter.
+- **L1 (Lasso):** adds \`λ · Σ|wᵢ|\`. Encourages exact sparsity — many weights go to exactly 0. Useful for feature selection.
+- **Elastic Net:** combines L1 + L2 with separate coefficients.
+
+**Architectural regularization:**
+- **Dropout:** randomly zero-masks neurons with probability \`p\` during training only. Equivalent to training an ensemble of 2ⁿ sub-networks. Typical values: 0.5 for FC layers, 0.1–0.2 for conv layers.
+- **Batch Normalization:** normalizes layer inputs, reducing internal covariate shift. Has a mild regularizing effect and often reduces the need for dropout.
+- **DropConnect:** zeroes weights (not activations) — a generalization of dropout.
+
+**Data-level regularization:**
+- **Data augmentation** — random crops, flips, color jitter, Mixup, CutMix.
+- **Label smoothing** — replace hard 0/1 labels with soft probabilities, preventing overconfident predictions.
+
+**Early stopping** monitors validation loss and halts training before the model memorizes training noise — simple but highly effective.`,
+    chunks: ["ml-ch3-p31", "ml-ch5-p60", "ml-ch6-p78", "ml-ch3-p28"]
+  },
+};
+
+const DEFAULT_RESPONSE = {
+  text: `That's a great question. Based on the indexed chunks from **ML Fundamentals**, here's what I found:
+
+The document covers this topic in the context of foundational machine learning principles. The relevant sections discuss how these concepts interconnect with optimization theory, statistical learning, and practical model training workflows.
+
+For a deeper exploration of this specific topic, I'd recommend checking **Chapter 5 and 6** of the document directly — those sections provide worked examples alongside the theoretical treatment.
+
+Is there a more specific aspect you'd like me to dig into? I can retrieve targeted chunks on subtopics like optimization algorithms, architectural choices, or evaluation metrics.`,
+  chunks: ["ml-ch1-p05", "ml-ch2-p14"]
+};
+
+const chunkList = document.getElementById('chunk-list');
+CHUNKS.forEach(c => {
+  const el = document.createElement('div');
+  el.className = 'chunk';
+  el.innerHTML = `<div class="chunk-id">${c.id}</div><div class="chunk-preview">${c.preview}</div>`;
+  chunkList.appendChild(el);
+});
+
+let streaming = false;
+
+function matchResponse(q) {
+  const lower = q.toLowerCase();
+  if (lower.includes('gradient')) return RESPONSES['gradient descent'];
+  if (lower.includes('overfit')) return RESPONSES['overfitting'];
+  if (lower.includes('backprop') || lower.includes('back prop')) return RESPONSES['backpropagation'];
+  if (lower.includes('supervised') || lower.includes('unsupervised')) return RESPONSES['supervised'];
+  if (lower.includes('regulariz') || lower.includes('dropout') || lower.includes('l1') || lower.includes('l2')) return RESPONSES['regularization'];
+  return DEFAULT_RESPONSE;
+}
+
+function renderMD(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
+    .split('\n\n').map(p => {
+      if (p.startsWith('<ul>')) return p;
+      return `<p>${p}</p>`;
+    }).join('');
+}
+
+function addMsg(role, content, chunks) {
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.remove();
+
+  const chat = document.getElementById('chat');
+  const msg = document.createElement('div');
+  msg.className = `msg ${role}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = `avatar avatar-${role}`;
+  avatar.textContent = role === 'ai' ? '✦' : 'AM';
+
+  const bubble = document.createElement('div');
+  bubble.className = `bubble bubble-${role}`;
+
+  if (role === 'ai') {
+    const textNode = document.createElement('div');
+    textNode.className = 'bubble-text';
+    bubble.appendChild(textNode);
+    if (chunks && chunks.length) {
+      const citeDiv = document.createElement('div');
+      citeDiv.className = 'citations';
+      citeDiv.style.display = 'none';
+      chunks.forEach(id => {
+        const chip = document.createElement('span');
+        chip.className = 'cite-chip';
+        chip.textContent = '📄 ' + id;
+        citeDiv.appendChild(chip);
+      });
+      bubble.appendChild(citeDiv);
+    }
+    msg.appendChild(avatar);
+    msg.appendChild(bubble);
+    chat.appendChild(msg);
+    chat.scrollTop = chat.scrollHeight;
+    return { textNode, bubble };
+  } else {
+    bubble.innerHTML = renderMD(content);
+    msg.appendChild(avatar);
+    msg.appendChild(bubble);
+    chat.appendChild(msg);
+    chat.scrollTop = chat.scrollHeight;
+    return null;
+  }
+}
+
+async function typewriterStream(textNode, fullText, bubble) {
+  const words = fullText.split(' ');
+  let current = '';
+  const cursor = document.createElement('span');
+  cursor.className = 'cursor';
+  textNode.appendChild(cursor);
+
+  for (let i = 0; i < words.length; i++) {
+    current += (i > 0 ? ' ' : '') + words[i];
+    textNode.innerHTML = renderMD(current);
+    textNode.appendChild(cursor);
+    const chat = document.getElementById('chat');
+    chat.scrollTop = chat.scrollHeight;
+    const delay = 18 + Math.random() * 22;
+    await new Promise(r => setTimeout(r, delay));
+  }
+  cursor.remove();
+
+  const citeDiv = bubble.querySelector('.citations');
+  if (citeDiv) {
+    citeDiv.style.display = 'flex';
+    await new Promise(r => setTimeout(r, 200));
+    citeDiv.style.animation = 'none';
+  }
+
+  highlightChunks(Array.from(bubble.querySelectorAll('.cite-chip')).map(c => c.textContent.replace('📄 ','').trim()));
+}
+
+function highlightChunks(ids) {
+  document.querySelectorAll('.chunk').forEach(el => {
+    const id = el.querySelector('.chunk-id').textContent;
+    el.style.background = ids.includes(id) ? 'rgba(27,184,154,0.12)' : '';
+    el.style.borderLeft = ids.includes(id) ? '2px solid var(--teal)' : '';
+    if (ids.includes(id)) el.scrollIntoView({behavior:'smooth',block:'nearest'});
+  });
+}
+
+async function sendMsg(text) {
+  if (streaming) return;
+  const input = document.getElementById('msg-input');
+  const q = text || input.value.trim();
+  if (!q) return;
+  input.value = '';
+  autoResize();
+
+  streaming = true;
+  document.getElementById('send-btn').disabled = true;
+  document.getElementById('suggestions').style.display = 'none';
+
+  addMsg('user', q);
+
+  await new Promise(r => setTimeout(r, 600));
+
+  const resp = matchResponse(q);
+  const { textNode, bubble } = addMsg('ai', '', resp.chunks);
+
+  await typewriterStream(textNode, resp.text, bubble);
+
+  streaming = false;
+  document.getElementById('send-btn').disabled = false;
+}
+
+function ask(q) { sendMsg(q); }
+
+function autoResize() {
+  const el = document.getElementById('msg-input');
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+document.getElementById('msg-input').addEventListener('input', autoResize);
+document.getElementById('msg-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+});
+</script>
+</body>
+</html>
